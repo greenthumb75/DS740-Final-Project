@@ -91,17 +91,14 @@ cor(corTestDF3)
   #significant correlations between predictor vars, such as:
   #Hist_Visits/Total_Sale, W3_Sale/W3_Max_Sale,W3_Min_Sale, W4_Sale/W4_Min_Sale
 
-######### ######### ######### ######### ######### ######### ######### ######### ######  #########
-######### classification of CHURN=0 or CHURN=1                                          ######### 
-######### Bagging will have high variance because of high correlations                  ######### 
-######### Use random forest because of correlations in predictors.  Use CV to choose P  ######### 
-######### ######### ######### ######### ######### ######### ######### ######### ######  #########
-######### ANN best for large data sets with nonlinear relationships. Use CV to tune     #########
-######### ######### ######### ######### ######### ######### ######### ######### ######  #########
+######### ######### ######### ######### ######### ######### ######### ######### ###### ###### ######
+######### classification of CHURN=0 or CHURN=1                                                ###### 
+######### Bagging will have high variance because of high correlations                        ###### 
+######### *** Use random forest because of correlations in predictors.  Use CV to choose P    ######
+######### ######### ######### ######### ######### ######### ######### ######### ###### ###### ######
+######### *** ANN best for large data sets with nonlinear relationships. Use CV to tune       ######
+######### ######### ######### ######### ######### ######### ######### ######### ###### ###### ######
 
-#######################################
-###### Use random forest and ANN ######
-#######################################
 
 ##################################################################################################
 #################### Random Forest for sample of 1000 obs ########################################
@@ -138,12 +135,11 @@ for (i in 1:k) { #iterate over folds
   } #end iterate over model size
 } #end iterate over folds
 
-rf.mse<-apply(group.error, 1, mean)
-# [1] 0.2452472 0.2362068 0.2362276 0.2392480 0.2442478 0.2522983 0.2503187 0.2402981 0.2452882 0.2562783 0.2532783
-# [12] 0.2412682 0.2552686 0.2432583 0.2522785 0.2472583 0.2522682 0.2442583 0.2492985 0.2442781 0.2452882 0.2523187
-# [23] 0.2462882 0.2432884 0.2432682 0.2483183 0.2462985 0.2452682 0.2473084 0.2482981 0.2422680 0.2432583
+rf.mse.sample<-apply(group.error, 1, mean)
+  # [1] 0.2452472 0.2362068 0.2362276 0.2392480 0.2442478 0.2522983 0.2503187 0.2402981 0.2452882 0.2562783 0.2532783
+  # [12] 0.2412682 0.2552686 0.2432583 0.2522785 0.2472583 0.2522682 0.2442583 0.2492985 0.2442781 0.2452882 0.2523187
+  # [23] 0.2462882 0.2432884 0.2432682 0.2483183 0.2462985 0.2452682 0.2473084 0.2482981 0.2422680 0.2432583
   #mtry=2,3,4 are the lowest, though no size is very different. Will go with 2 for simplicity
-
 ###################### Final Random Forest Model and Error Rate, for mtry=2 ##############################
 set.seed(22)
 mtry2.rf.model<-randomForest(cust.sample$CHURN~., data=cust.sample, mtry=2, importance=T)
@@ -152,8 +148,9 @@ mtry2.rf.er<-(cust.rf.conf[1,2]+cust.rf.conf[2,1])/(sum(cust.rf.conf[,1])+sum(cu
 
 plot(final.rf.model,xlim=c(0,150))
   #Plot shows same error rate at 60 trees as at 500 trees. Can simplify for full model
-##########################################################################################################
-
+##################################################################################################
+################### End :: Random Forest for sample of 1000 obs ##################################
+##################################################################################################
 
 ##################################################################################################
 #################### Random Forest for full data set      ########################################
@@ -169,7 +166,7 @@ group.error<-matrix(,nr=32, nc=k) #matrix to hold error rates for each model siz
 for (i in 1:k) { #iterate over folds
   groupi<-(cvgroups==i)
   for(j in 1:32){ #iterate over model size
-    cust.rf<-randomForest(cust$CHURN[!groupi]~., data=cust[!groupi,], mtry=j, importance=T)
+    cust.rf<-randomForest(cust$CHURN[!groupi]~., data=cust[!groupi,], mtry=j, ntree=60, importance=T)
     cust.rf.pred<-predict(cust.rf,newdata=cust[groupi,])
     cust.rf.conf<-table(cust.rf.pred, cust$CHURN[groupi])
     group.error[j, i]<-(cust.rf.conf[1,2]+cust.rf.conf[2,1])/(sum(cust.rf.conf[,1])+sum(cust.rf.conf[,2]))
@@ -177,4 +174,244 @@ for (i in 1:k) { #iterate over folds
 } #end iterate over folds
 
 rf.mse<-apply(group.error, 1, mean)
+  # [1] 0.2374861 0.2327096 0.2313464 0.2318044 0.2332003 0.2363301 0.2371262 0.2388493 0.2396999 0.2415647 0.2430260
+  # [12] 0.2430042 0.2442038 0.2440402 0.2449781 0.2447926 0.2457959 0.2460795 0.2457415 0.2456214 0.2461558 0.2464175
+  # [23] 0.2467883 0.2477916 0.2476717 0.2473445 0.2479552 0.2478898 0.2480097 0.2481187 0.2473336 0.2489476
+  
+#plot of MSE for all mtry sizes
+plot(rf.mse, xlab="Size", ylab="Erorr", main="Full Model Error Rates")
+  #error rates are similar to sample model error rates, but show a much clearer pattern
+  #lowest error rate for size of 3 with 60 trees
 
+############# Final Random Forest Model and Error Rate, for mtry=3 with 60 trees #########################
+set.seed(22)
+final.rf.model<-randomForest(cust$CHURN~., data=cust, mtry=3, ntree=60, importance=T)
+final.rf.conf<-final.rf.model$confusion
+final.rf.er<-(final.rf.conf[1,2]+final.rf.conf[2,1])/(sum(final.rf.conf[,1])+sum(final.rf.conf[,2])) #0.23127
+
+plot(final.rf.model)
+  #Final error rate for this model 0.23127
+##################################################################################################
+############### End :: Random Forest for full data set ###########################################
+##################################################################################################
+
+
+##################################################################################################
+#################### Artificial Neural Network for sample of 1000 obs ############################
+####################       Tuning Number of Hidden Nodes              ############################
+##################################################################################################
+library(nnet)
+library(NeuralNetTools)
+
+#grouping by numeric and catagorical variables
+cust.sample.col.sort<-data.frame(cust.sample[,1:20], cust.sample[,25:26], cust.sample[,21:24], cust.sample[,27:33])
+names(cust.sample.col.sort)
+
+########### using 10-fold cross-validation to select number of hidden nodes ######################
+n<-dim(cust.sample)[1] #1000
+k<-10 # using 10-fold cross-validation
+groups<-c(rep(1:k,floor(n/k)))
+sizes<-1:20 #numbers of hidden nodes to try
+misclassError<-matrix(, nr=k, nc=length(sizes) ) #fill 10x20 matrix with NAs
+conv<-matrix(, nr=k, nc=length(sizes) )  #fill 10x20 matrix with NAs
+set.seed(13)
+cvgroups<-sample(groups,n)
+
+#run 10-fold cross-validation
+for (i in 1:k){ #iterate over folds
+  groupi<-(cvgroups==i)
+  #standardize sampled data
+  cust.sample.train.std<-scale(cust.sample.col.sort[,1:22])
+  cust.sample.train<-data.frame(cust.sample.train.std[!groupi,1:22],cust.sample.col.sort[!groupi,23:33])
+  cust.sample.valid<-data.frame(scale(cust.sample.col.sort[groupi,1:22],center=attr(cust.sample.train.std,"scaled:center"),
+                                      scale=attr(cust.sample.train.std,"scaled:scale")),cust.sample.col.sort[groupi,23:33])
+  
+  #iterate over numbers of hidden nodes
+  for (j in 1:length(sizes)){
+    cust.sample.fit<-nnet(CHURN~., data=cust.sample.train, size = sizes[j], trace = F, maxit=5000) 
+    predictions<-predict(cust.sample.fit, cust.sample.valid, type = "class")
+    misclassError[i, j]<-length(which(predictions!=cust.sample.valid[, 27]))/length(predictions)
+    conv[i, j]<-cust.sample.fit$convergence
+  } # end iteration over numbers of hidden nodes
+} # end iteration over folds
+
+#with maxit=1000
+colSums(conv) #0 0 0 0 0 1 1 0 0 1 2 4 3 3 2 7 8 8 6 5
+length(which(colSums(conv)!=0)) #13
+  #13 not = 0, so not many converged
+
+#trying with maxit=3000
+colSums(conv) #0 0 0 0 0 0 0 0 0 0 0 2 1 0 1 2 2 1 4 0
+length(which(colSums(conv)!=0)) #7
+  #7 not = 0, so not all converged
+
+#trying with maxit=5000
+colSums(conv) #0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  #all = 0, so all converged
+
+#average misclassification error across all folds of each number of hidden nodes
+error<-apply(misclassError, 2, mean)
+  # [1] 0.272 0.270 0.272 0.288 0.268 0.288 0.269 0.277 0.283 0.305 0.302 0.301 0.296 0.304 0.321 0.301 0.304 
+  #[18] 0.305 0.310 0.325
+#plot of error rate vs. the number of hidden nodes
+plot(sizes, error, type="l", main="ANN: Sample of 1000", xlab="Hidden Nodes", ylab="Error Rate")
+which(error==min(error)) #5
+  #while 5 hidden nodes minimizes the error rate, anything under 9 is about the same
+  #probably go with 2, in this sample, but will try full data set with 2:8 hidden nodes
+  #this will hopefully smooth out the curve so we can pick a more accurate number of hidden nodes
+
+
+##################################################################################################
+#################### Artificial Neural Network with Full Data Set ################################
+####################       Tuning Number of Hidden Nodes          ################################
+##################################################################################################
+
+#grouping by numeric and catagorical variables
+cust.col.sort<-data.frame(cust[,1:20], cust[,25:26], cust[,21:24], cust[,27:33])
+names(cust.col.sort)
+
+########### using 10-fold cross-validation to select number of hidden nodes ######################
+n<-dim(cust)[1] #91698
+k<-10 # using 10-fold cross-validation
+groups<-c(rep(1:k,floor(n/k)),rep(1:(n-(k*floor(n/k))),1))
+sizes<-2:8 #numbers of hidden nodes to try
+misclassError<-matrix(, nr=k, nc=length(sizes) ) #fill 10x20 matrix with NAs
+conv<-matrix(, nr=k, nc=length(sizes) )  #fill 10x20 matrix with NAs
+set.seed(13)
+cvgroups<-sample(groups,n)
+
+#run 10-fold cross-validation
+for (i in 1:k){ #iterate over folds
+  groupi<-(cvgroups==i)
+  #standardize sampled data
+  cust.train.std<-scale(cust.col.sort[,1:22])
+  cust.train<-data.frame(cust.train.std[!groupi,1:22],cust.col.sort[!groupi,23:33])
+  cust.valid<-data.frame(scale(cust.col.sort[groupi,1:22],center=attr(cust.train.std,"scaled:center"),
+                                      scale=attr(cust.train.std,"scaled:scale")),cust.col.sort[groupi,23:33])
+  
+  #iterate over numbers of hidden nodes
+  for (j in 1:length(sizes)){
+    cust.fit<-nnet(CHURN~., data=cust.train, size = sizes[j], trace = F, maxit=3000) 
+    predictions<-predict(cust.fit, cust.valid, type = "class")
+    misclassError[i, j]<-length(which(predictions!=cust.valid[, 27]))/length(predictions)
+    conv[i, j]<-cust.fit$convergence
+  } # end iteration over numbers of hidden nodes
+} # end iteration over folds
+
+#with maxit=3000
+colSums(conv) #0 0 0 0 0 0 0
+
+#average misclassification error across all folds of each number of hidden nodes
+error<-apply(misclassError, 2, mean)
+  # 0.2346398 0.2314337 0.2309756 0.2311829 0.2308338 0.2311174 0.2305830
+#plot of error rate vs. the number of hidden nodes
+plot(sizes, error, type="l", main="ANN: Full Data Set", xlab="Hidden Nodes", ylab="Error Rate")
+which(error==min(error)) #8
+  #while 8 hidden nodes minimizes the error rate, everything between 3 and 8 is pretty close, 
+  #I'm going with 3, for the sake of simplicity
+
+##################################################################################################
+#################### Artificial Neural Network for Full Data Set      ############################
+####################       Tuning Number of Weight Decay Parameter    ############################
+##################################################################################################
+n<-dim(cust)[1] #91698
+k<-10 # using 10-fold cross-validation
+groups<-c(rep(1:k,floor(n/k)),rep(1:(n-(k*floor(n/k))),1))
+decayRate<-seq(.5,2,by=.1) #decay rates, random tests show now bennefit below .5 or above 2
+misclassError<-matrix(, nr=k, nc=length(decayRate) ) #fill 10x16 matrix with NAs
+conv<-matrix(, nr=k, nc=length(decayRate) )  #fill 10x16 matrix with NAs
+set.seed(13)
+cvgroups<-sample(groups,n)
+
+#run 10-fold cross-validation
+for (i in 1:k){ #iterate over folds
+  groupi<-(cvgroups==i)
+  #standardize sampled data
+  cust.train.std<-scale(cust.col.sort[,1:22])
+  cust.train<-data.frame(cust.train.std[!groupi,1:22],cust.col.sort[!groupi,23:33])
+  cust.valid<-data.frame(scale(cust.col.sort[groupi,1:22],center=attr(cust.train.std,"scaled:center"),
+                                      scale=attr(cust.train.std,"scaled:scale")),cust.col.sort[groupi,23:33])
+  
+  #iterate over numbers of hidden nodes
+  for (j in 1:length(decayRate)){
+    cust.fit<-nnet(CHURN~., data=cust.train, size=3, decay=decayRate[j], trace=F, maxit=3000) 
+    predictions<-predict(cust.fit, cust.valid, type = "class")
+    misclassError[i, j]<-length(which(predictions!=cust.valid[, 27]))/length(predictions)
+    conv[i, j]<-cust.fit$convergence
+  } # end iteration over numbers of hidden nodes
+} # end iteration over folds
+
+
+#with maxit=3000, size=3
+colSums(conv) #0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  # all converged
+
+#average misclassification error across all folds of each number of hidden nodes
+error<-apply(misclassError, 2, mean)
+  # 0.2308556 0.2309538 0.2316954 0.2311937 0.2315427 0.2325024 0.2316299 0.2313028 0.2310629 0.2317608 
+  # 0.2316954 0.2317499 0.2318698 0.2307684 0.2316300 0.2322188
+ 
+plot(decayRate, error, type="l", main="ANN: Full Data Set", xlab="Decay Rate", ylab="Error Rate")
+decayRate[which(error==min(error))] #1.8
+min.error<-min(error)
+  #a decay rate of 1.8 minimizes the error for ANN with 3 hidden nodes, but the plot shows
+  #a lot of up and down between error of .230 and .2325, so there is not a lot of difference
+  #lowest error rate is 0.2307684, barely lower than random forest
+
+ANN.model<-nnet(CHURN~., data=cust, size=3, decay=1.8, trace=F)
+garson(ANN.model)
+
+###########################################################################################
+######################## testing ANN with selected variables ##############################
+###########################################################################################
+ga<-garson(ANN.model)
+ga$data #garson shows the 6 most important predictors are
+        #Days_since_last_visit, Total_Sale, W2_Min_Sale, W2_Visits, APV,W3_Sale, week_2, week_1
+cust.small<-data.frame(cust$CHURN,cust$Days_since_last_visit,cust$Total_Sale,cust$W2_Min_Sale,cust$W2_Visits,
+                       cust$APV,cust$W3_Sale,cust$week_2,cust$week_1)
+colnames(cust.small)<-c("CHURN","Days_since_last_visit","Total_Sale","W2_Min_Sale","W2_Visits","APV","W3_Sale",
+                        "week_21","week_11")
+
+set.seed(13)
+train<-sample(1:91698,60520,replace = F)
+
+ANN.modelB<-nnet(CHURN~., data=cust.small[train,], size=3, decay=1.8, trace=F, maxit=3000)
+custClass<-predict(ANN.modelB, cust.small[-train,],type="class")
+
+#confusion matrix
+table(custClass, cust.small[-train,]$CHURN)
+  #custClass     0     1
+  #0 17919  4443
+  #1  2862  5954
+  #(4443+2862)/(4443+2862+17919+5954) = 0.2342998
+
+
+cust.small.4<-data.frame(cust$CHURN,cust$Days_since_last_visit,cust$Total_Sale,cust$APV,cust$week_2)
+colnames(cust.small.4)<-c("CHURN","Days_since_last_visit","Total_Sale","APV","week_2")
+
+
+ANN.modelC<-nnet(CHURN~., data=cust.small.4[train,], size=3, decay=1.8, trace=F, maxit=3000)
+custClass2<-predict(ANN.modelC, cust.small.4[-train,],type="class")
+
+#confusion matrix
+table(custClass2, cust.small.4[-train,]$CHURN)
+  #custClass2     0     1
+  #0 17955  4517
+  #1  2826  5880
+  #(4517+2826)/(4517+2826+17955+5880) = 0.2355186
+
+#using all 32 predictors for ANN results in a lowest error rate of 0.2307684
+#using only the 4 predictors Days_since_last_visit, Total_Sale, APV, week_2 results 
+#in an error rate of 0.2355186. This is an insignificant difference of 0.005.  It would 
+#pay off in processing time to use the 4 variable model. Ideally I would tune the size
+#and decay parameters again, but I used up days of time running the full data set multiple times
+
+#############################################################################################
+######################## Final ANN Model ####################################################
+#############################################################################################
+final.ANN.model<-nnet(CHURN~., data=cust.small.4, size=3, decay=1.8, trace=F, maxit=3000)
+#############################################################################################
+
+#plot the ANN
+library(NeuralNetTools)
+plotnet(final.ANN.model)
