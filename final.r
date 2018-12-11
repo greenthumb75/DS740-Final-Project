@@ -1,9 +1,18 @@
+##################################################################################################
+###### Bradford Simkins                                                                     ######
+###### DS740: Data Mining - Final Project                                                   ######
+###### 12/11/2018                                                                           ######
+##################################################################################################
+
 setwd("F:/Text/College/University of Wisconsin/740 Data Mining - Fall 2018/FinalProject")
 cust<-read.csv("Customer_Sales_Transactional_data.csv")
+##################################################################################################
+##                      Exploring the Data                                                      ##
+##################################################################################################
 summary(cust)
 dim(cust) #91698    36
 
-#converting to factors
+#converting 1/0 variables to factors
 cust$week_1<-as.factor(cust$week_1)
 cust$week_2<-as.factor(cust$week_2)
 cust$week_3<-as.factor(cust$week_3)
@@ -57,29 +66,16 @@ names(cust)
   #[29] "Customer_Value"        "High_value"            "Low_value"             "Regular"              
   #[33] "Visitors_Type"         "Rare_Visitors"         "Frequent_Visitors"     "Regular_Visitors" 
 
-#remove Customer_ID as well as  Customer_Value and Visitors_Type, as the same info is in the vars "High_value",
+#removing Customer_ID as well as  Customer_Value and Visitors_Type, as the same info is in the vars "High_value",
 #"Low_value", "Regular" and "Rare_Visitors", "Frequent_Visitors", "Regular_Visitors" 
 cust<-cust[,-c(1,29,33)]
-names(cust)
-  # [1] "Total_Sale"            "STD_Sales"             "Hist_Visits"           "W1_Min_Sale"          
-  #[5] "W1_STD_Sales"          "W1_Visits"             "W2_Min_Sale"           "W2_STD_Sales"         
-  #[9] "W2_Visits"             "W3_Sale"               "W3_Max_Sale"           "W3_Min_Sale"          
-  #[13] "W3_STD_Sales"          "W3_Visits"             "W4_Sale"               "W4_Min_Sale"          
-  #[17] "W4_STD_Sales"          "W4_Visits"             "W5_STD_Sales"          "W5_Visits"            
-  #[21] "week_1"                "week_2"                "week_3"                "week_4"               
-  #[25] "APV"                   "Days_since_last_visit" "CHURN"                 "High_value"           
-  #[29] "Low_value"             "Regular"               "Rare_Visitors"         "Frequent_Visitors"    
-  #[33] "Regular_Visitors" 
 
 
-cust.scale<-data.frame(CHURN=cust$CHURN,scale(cust[,c(1:20,25,26)]),cust[,21:24],cust[,28:33])
-head(cust.scale)
-names(cust.scale)
-######### ######### ######### ######### ######### ######### ######### #########  #########
-######### classification of CHURN=0 or CHURN=1                                   ######### 
-######### LDA/QDA assumes normality                                              ######### 
-######### KNN performs better than logistic when relationship highly non-linear  ######### 
-######### ######### ######### ######### ######### ######### ######### #########  #########
+######### ######### ######### # Notes on Methods # ######### ######### ######### ######### #########
+######### Ploblem: Classification of CHURN=0 or CHURN=1                                    ######### 
+######### LDA/QDA assumes normality, so would not work without significant transformations ######### 
+######### KNN performs better than logistic regression when relationship highly non-linear ######### 
+######### ######### ######### ######### ######### ######### ######### #########  ######### #########
 
 #testing correlations
 corTestDF1<-cust[,1:8]
@@ -91,8 +87,7 @@ cor(corTestDF3)
   #significant correlations between predictor vars, such as:
   #Hist_Visits/Total_Sale, W3_Sale/W3_Max_Sale,W3_Min_Sale, W4_Sale/W4_Min_Sale
 
-######### ######### ######### ######### ######### ######### ######### ######### ###### ###### ######
-######### classification of CHURN=0 or CHURN=1                                                ###### 
+######### ######### ######### # Notes on Methods # ######## ######### ######### ###### ###### ######
 ######### Bagging will have high variance because of high correlations                        ###### 
 ######### *** Use random forest because of correlations in predictors.  Use CV to choose P    ######
 ######### ######### ######### ######### ######### ######### ######### ######### ###### ###### ######
@@ -101,10 +96,11 @@ cor(corTestDF3)
 
 
 ##################################################################################################
-#################### Random Forest for sample of 1000 obs ########################################
+##                      Random Forest for sample of 1000 obs                                    ##
 ##################################################################################################
-  #get a random, but representative, subset of data to work with for testing, as 90,000+ obs runs 
-  #too slowly
+
+#get a random, but representative, subset of data to work with for testing, as 90,000+ obs runs 
+#too slowly
 set.seed(24)
 cust.sample<-cust[sample(nrow(cust),1000),]
 
@@ -140,20 +136,21 @@ rf.mse.sample<-apply(group.error, 1, mean)
   # [12] 0.2412682 0.2552686 0.2432583 0.2522785 0.2472583 0.2522682 0.2442583 0.2492985 0.2442781 0.2452882 0.2523187
   # [23] 0.2462882 0.2432884 0.2432682 0.2483183 0.2462985 0.2452682 0.2473084 0.2482981 0.2422680 0.2432583
   #mtry=2,3,4 are the lowest, though no size is very different. Will go with 2 for simplicity
-###################### Final Random Forest Model and Error Rate, for mtry=2 ##############################
+
+## Final Random Forest Model and Error Rate, for mtry=2 with 1000 obs ##
 set.seed(22)
-mtry2.rf.model<-randomForest(cust.sample$CHURN~., data=cust.sample, mtry=2, importance=T)
-cust.rf.conf<-mtry2.rf.model$confusion
-mtry2.rf.er<-(cust.rf.conf[1,2]+cust.rf.conf[2,1])/(sum(cust.rf.conf[,1])+sum(cust.rf.conf[,2])) #0.235
+sample.rf.model<-randomForest(cust.sample$CHURN~., data=cust.sample, mtry=2, importance=T)
+cust.rf.conf<-sample.rf.model$confusion
+sample.rf.er<-(cust.rf.conf[1,2]+cust.rf.conf[2,1])/(sum(cust.rf.conf[,1])+sum(cust.rf.conf[,2])) #0.235
 
-plot(final.rf.model,xlim=c(0,150))
-  #Plot shows same error rate at 60 trees as at 500 trees. Can simplify for full model
+plot(sample.rf.model,xlim=c(0,150))
+  #Plot shows same error rate at 60 trees and 500 trees. Can simplify number of trees for full model
 ##################################################################################################
-################### End :: Random Forest for sample of 1000 obs ##################################
+##                     End :: Random Forest for sample of 1000 obs                              ##
 ##################################################################################################
-
+                            
 ##################################################################################################
-#################### Random Forest for full data set      ########################################
+##                        Random Forest for full data set                                       ##
 ##################################################################################################
 n<-dim(cust)[1]
 k<-10
@@ -173,17 +170,14 @@ for (i in 1:k) { #iterate over folds
   } #end iterate over model size
 } #end iterate over folds
 
-rf.mse<-apply(group.error, 1, mean)
-  # [1] 0.2374861 0.2327096 0.2313464 0.2318044 0.2332003 0.2363301 0.2371262 0.2388493 0.2396999 0.2415647 0.2430260
-  # [12] 0.2430042 0.2442038 0.2440402 0.2449781 0.2447926 0.2457959 0.2460795 0.2457415 0.2456214 0.2461558 0.2464175
-  # [23] 0.2467883 0.2477916 0.2476717 0.2473445 0.2479552 0.2478898 0.2480097 0.2481187 0.2473336 0.2489476
-  
-#plot of MSE for all mtry sizes
-plot(rf.mse, xlab="Size", ylab="Erorr", main="Full Model Error Rates")
+rf.er<-apply(group.error, 1, mean)
+
+#plot of Error Rate for all mtry sizes
+plot(rf.er, xlab="Size", ylab="Erorr", main="Full Model Error Rates")
   #error rates are similar to sample model error rates, but show a much clearer pattern
   #lowest error rate for size of 3 with 60 trees
 
-############# Final Random Forest Model and Error Rate, for mtry=3 with 60 trees #########################
+## Final Random Forest Model and Error Rate, for mtry=3 with 60 trees ##
 set.seed(22)
 final.rf.model<-randomForest(cust$CHURN~., data=cust, mtry=3, ntree=60, importance=T)
 final.rf.conf<-final.rf.model$confusion
@@ -192,22 +186,22 @@ final.rf.er<-(final.rf.conf[1,2]+final.rf.conf[2,1])/(sum(final.rf.conf[,1])+sum
 plot(final.rf.model)
   #Final error rate for this model 0.23127
 ##################################################################################################
-############### End :: Random Forest for full data set ###########################################
+##                            End :: Random Forest for full data set                            ##
 ##################################################################################################
 
 
 ##################################################################################################
-#################### Artificial Neural Network for sample of 1000 obs ############################
-####################       Tuning Number of Hidden Nodes              ############################
+##                  Artificial Neural Network for sample of 1000 obs                            ##
+##                         Tuning Number of Hidden Nodes                                        ##
 ##################################################################################################
 library(nnet)
 library(NeuralNetTools)
 
-#grouping by numeric and catagorical variables
+#grouping columns by numeric and catagorical variables
 cust.sample.col.sort<-data.frame(cust.sample[,1:20], cust.sample[,25:26], cust.sample[,21:24], cust.sample[,27:33])
 names(cust.sample.col.sort)
 
-########### using 10-fold cross-validation to select number of hidden nodes ######################
+## using 10-fold cross-validation to select number of hidden nodes ##
 n<-dim(cust.sample)[1] #1000
 k<-10 # using 10-fold cross-validation
 groups<-c(rep(1:k,floor(n/k)))
@@ -228,31 +222,31 @@ for (i in 1:k){ #iterate over folds
   
   #iterate over numbers of hidden nodes
   for (j in 1:length(sizes)){
-    cust.sample.fit<-nnet(CHURN~., data=cust.sample.train, size = sizes[j], trace = F, maxit=5000) 
-    predictions<-predict(cust.sample.fit, cust.sample.valid, type = "class")
+    cust.sample.fit<-nnet(CHURN~., data=cust.sample.train, size=sizes[j], trace=F, maxit=5000) 
+    predictions<-predict(cust.sample.fit, cust.sample.valid, type="class")
     misclassError[i, j]<-length(which(predictions!=cust.sample.valid[, 27]))/length(predictions)
     conv[i, j]<-cust.sample.fit$convergence
   } # end iteration over numbers of hidden nodes
 } # end iteration over folds
 
+## Convergence Assessment ##
 #with maxit=1000
 colSums(conv) #0 0 0 0 0 1 1 0 0 1 2 4 3 3 2 7 8 8 6 5
 length(which(colSums(conv)!=0)) #13
-  #13 not = 0, so not many converged
+  #13 not=0, so not many converged
 
 #trying with maxit=3000
 colSums(conv) #0 0 0 0 0 0 0 0 0 0 0 2 1 0 1 2 2 1 4 0
 length(which(colSums(conv)!=0)) #7
-  #7 not = 0, so not all converged
+  #7 not=0, so not all converged
 
 #trying with maxit=5000
 colSums(conv) #0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-  #all = 0, so all converged
+  #all=0, so all converged
 
 #average misclassification error across all folds of each number of hidden nodes
 error<-apply(misclassError, 2, mean)
-  # [1] 0.272 0.270 0.272 0.288 0.268 0.288 0.269 0.277 0.283 0.305 0.302 0.301 0.296 0.304 0.321 0.301 0.304 
-  #[18] 0.305 0.310 0.325
+
 #plot of error rate vs. the number of hidden nodes
 plot(sizes, error, type="l", main="ANN: Sample of 1000", xlab="Hidden Nodes", ylab="Error Rate")
 which(error==min(error)) #5
@@ -260,10 +254,9 @@ which(error==min(error)) #5
   #probably go with 2, in this sample, but will try full data set with 2:8 hidden nodes
   #this will hopefully smooth out the curve so we can pick a more accurate number of hidden nodes
 
-
 ##################################################################################################
-#################### Artificial Neural Network with Full Data Set ################################
-####################       Tuning Number of Hidden Nodes          ################################
+##                      Artificial Neural Network with Full Data Set                            ##
+##                            Tuning Number of Hidden Nodes                                     ##
 ##################################################################################################
 
 #grouping by numeric and catagorical variables
@@ -291,8 +284,8 @@ for (i in 1:k){ #iterate over folds
   
   #iterate over numbers of hidden nodes
   for (j in 1:length(sizes)){
-    cust.fit<-nnet(CHURN~., data=cust.train, size = sizes[j], trace = F, maxit=3000) 
-    predictions<-predict(cust.fit, cust.valid, type = "class")
+    cust.fit<-nnet(CHURN~., data=cust.train, size=sizes[j], trace=F, maxit=3000) 
+    predictions<-predict(cust.fit, cust.valid, type="class")
     misclassError[i, j]<-length(which(predictions!=cust.valid[, 27]))/length(predictions)
     conv[i, j]<-cust.fit$convergence
   } # end iteration over numbers of hidden nodes
@@ -300,10 +293,11 @@ for (i in 1:k){ #iterate over folds
 
 #with maxit=3000
 colSums(conv) #0 0 0 0 0 0 0
+  #converged
 
 #average misclassification error across all folds of each number of hidden nodes
 error<-apply(misclassError, 2, mean)
-  # 0.2346398 0.2314337 0.2309756 0.2311829 0.2308338 0.2311174 0.2305830
+
 #plot of error rate vs. the number of hidden nodes
 plot(sizes, error, type="l", main="ANN: Full Data Set", xlab="Hidden Nodes", ylab="Error Rate")
 which(error==min(error)) #8
@@ -311,8 +305,8 @@ which(error==min(error)) #8
   #I'm going with 3, for the sake of simplicity
 
 ##################################################################################################
-#################### Artificial Neural Network for Full Data Set      ############################
-####################       Tuning Number of Weight Decay Parameter    ############################
+##                    Artificial Neural Network for Full Data Set                               ##
+##                      Tuning Number of Weight Decay Parameter                                 ##
 ##################################################################################################
 n<-dim(cust)[1] #91698
 k<-10 # using 10-fold cross-validation
@@ -335,12 +329,11 @@ for (i in 1:k){ #iterate over folds
   #iterate over numbers of hidden nodes
   for (j in 1:length(decayRate)){
     cust.fit<-nnet(CHURN~., data=cust.train, size=3, decay=decayRate[j], trace=F, maxit=3000) 
-    predictions<-predict(cust.fit, cust.valid, type = "class")
+    predictions<-predict(cust.fit, cust.valid, type="class")
     misclassError[i, j]<-length(which(predictions!=cust.valid[, 27]))/length(predictions)
     conv[i, j]<-cust.fit$convergence
   } # end iteration over numbers of hidden nodes
 } # end iteration over folds
-
 
 #with maxit=3000, size=3
 colSums(conv) #0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
@@ -348,21 +341,16 @@ colSums(conv) #0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 
 #average misclassification error across all folds of each number of hidden nodes
 error<-apply(misclassError, 2, mean)
-  # 0.2308556 0.2309538 0.2316954 0.2311937 0.2315427 0.2325024 0.2316299 0.2313028 0.2310629 0.2317608 
-  # 0.2316954 0.2317499 0.2318698 0.2307684 0.2316300 0.2322188
- 
+
 plot(decayRate, error, type="l", main="ANN: Full Data Set", xlab="Decay Rate", ylab="Error Rate")
 decayRate[which(error==min(error))] #1.8
 min.error<-min(error)
   #a decay rate of 1.8 minimizes the error for ANN with 3 hidden nodes, but the plot shows
   #a lot of up and down between error of .230 and .2325, so there is not a lot of difference
-  #lowest error rate is 0.2307684, barely lower than random forest
-
-ANN.model<-nnet(CHURN~., data=cust, size=3, decay=1.8, trace=F)
-garson(ANN.model)
+  #lowest error rate is 0.2307684, barely lower than random forest's of 0.23127
 
 ###########################################################################################
-######################## testing ANN with selected variables ##############################
+##                   Testing ANN with selected variables                                 ##
 ###########################################################################################
 ga<-garson(ANN.model)
 ga$data #garson shows the 6 most important predictors are
@@ -373,7 +361,7 @@ colnames(cust.small)<-c("CHURN","Days_since_last_visit","Total_Sale","W2_Min_Sal
                         "week_21","week_11")
 
 set.seed(13)
-train<-sample(1:91698,60520,replace = F)
+train<-sample(1:91698,60520,replace=F)
 
 ANN.modelB<-nnet(CHURN~., data=cust.small[train,], size=3, decay=1.8, trace=F, maxit=3000)
 custClass<-predict(ANN.modelB, cust.small[-train,],type="class")
@@ -383,7 +371,7 @@ table(custClass, cust.small[-train,]$CHURN)
   #custClass     0     1
   #0 17919  4443
   #1  2862  5954
-  #(4443+2862)/(4443+2862+17919+5954) = 0.2342998
+  #(4443+2862)/(4443+2862+17919+5954)=0.2342998
 
 
 cust.small.4<-data.frame(cust$CHURN,cust$Days_since_last_visit,cust$Total_Sale,cust$APV,cust$week_2)
@@ -398,7 +386,7 @@ table(custClass2, cust.small.4[-train,]$CHURN)
   #custClass2     0     1
   #0 17955  4517
   #1  2826  5880
-  #(4517+2826)/(4517+2826+17955+5880) = 0.2355186
+  #(4517+2826)/(4517+2826+17955+5880)=0.2355186
 
 #using all 32 predictors for ANN results in a lowest error rate of 0.2307684
 #using only the 4 predictors Days_since_last_visit, Total_Sale, APV, week_2 results 
@@ -407,7 +395,7 @@ table(custClass2, cust.small.4[-train,]$CHURN)
 #and decay parameters again, but I used up days of time running the full data set multiple times
 
 #############################################################################################
-######################## Final ANN Model ####################################################
+##                               Final ANN Model                                           ##
 #############################################################################################
 final.ANN.model<-nnet(CHURN~., data=cust.small.4, size=3, decay=1.8, trace=F, maxit=3000)
 #############################################################################################
