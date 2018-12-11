@@ -70,7 +70,6 @@ names(cust)
 #"Low_value", "Regular" and "Rare_Visitors", "Frequent_Visitors", "Regular_Visitors" 
 cust<-cust[,-c(1,29,33)]
 
-
 ######### ######### ######### # Notes on Methods # ######### ######### ######### ######### #########
 ######### Ploblem: Classification of CHURN=0 or CHURN=1                                    ######### 
 ######### LDA/QDA assumes normality, so would not work without significant transformations ######### 
